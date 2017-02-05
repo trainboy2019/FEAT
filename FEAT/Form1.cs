@@ -102,21 +102,14 @@ namespace Fire_Emblem_Awakening_Archive_Tool
                 {
                     byte[] filedata = File.ReadAllBytes(path);
                     string decpath = Path.GetDirectoryName(path) + Path.DirectorySeparatorChar + Path.GetFileNameWithoutExtension(path);
-                    if (filedata[0] == 0x13 && filedata[4] == 0x11) // "LZ13"
+                    var xorkey = BitConverter.ToUInt32(filedata, 0) >> 8;
+                    xorkey *= 0x8083;
+                    for (var i = 8; i < filedata.Length; i += 0x4)
                     {
-                        filedata = filedata.Skip(4).ToArray();
+                        BitConverter.GetBytes(BitConverter.ToUInt32(filedata, i) ^ xorkey).CopyTo(filedata, i);
+                        xorkey ^= BitConverter.ToUInt32(filedata, i);
                     }
-                    else if (filedata[0] == 0x17 && filedata[4] == 0x11) // Fire Emblem Heroes "LZ17"
-                    {
-                        var xorkey = BitConverter.ToUInt32(filedata, 0) >> 8;
-                        xorkey *= 0x8083;
-                        for (var i = 8; i < filedata.Length; i += 0x4)
-                        {
-                            BitConverter.GetBytes(BitConverter.ToUInt32(filedata, i) ^ xorkey).CopyTo(filedata, i);
-                            xorkey ^= BitConverter.ToUInt32(filedata, i);
-                        }
-                        filedata = filedata.Skip(4).ToArray();
-                    }
+                    filedata = filedata.Skip(4).ToArray();
                     try
                     {
                         File.WriteAllBytes(decpath, LZ11Decompress(filedata));
@@ -138,6 +131,9 @@ namespace Fire_Emblem_Awakening_Archive_Tool
                     {
                         string archive_name = ExtractFireEmblemMessageArchive(Path.GetDirectoryName(path) + Path.DirectorySeparatorChar + Path.GetFileNameWithoutExtension(path) + ".txt", filedata);
                         AddLine(RTB_Output, string.Format("Successfully Extracted {0} ({1}).", archive_name, Path.GetFileName(path)));
+                    }
+                    else{
+                        AddLine(RTB_Output, string.Format("Not yet supported for FE Heroes", archive_name, Path.GetFileName(path)));
                     }
                 }
                 else if (ext == ".arc")
